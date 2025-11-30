@@ -1,17 +1,25 @@
+@file:Suppress("unused")
+
 package util.collections
 
+import util.DataPoint
 import util.Direction
-import util.Point
 import util.extensions.toward
 import java.util.LinkedList
 import java.util.Queue
 
+@Suppress("MemberVisibilityCanBePrivate")
 open class Matrix<T>(initialContents: List<List<T>>) : Iterable<List<T>> {
-    private var grid: MutableList<MutableList<T>> = validate(initialContents).map { it.map { r -> r }.toMutableList() }.toMutableList()
+    private var grid: MutableList<MutableList<T>> =
+        validate(initialContents).map { it.map { r -> r }.toMutableList() }.toMutableList()
 
     constructor(width: Int, height: Int, fill: T) : this(List(height) { List(width) { fill } })
 
-    fun drawLine(start: Pair<Int, Int>, end: Pair<Int, Int>, fill: T) {
+    fun drawLine(
+        start: Pair<Int, Int>,
+        end: Pair<Int, Int>,
+        fill: T,
+    ) {
         if (start.first == end.first) {
             // Vertical line
             for (row in start.second toward end.second) {
@@ -34,8 +42,13 @@ open class Matrix<T>(initialContents: List<List<T>>) : Iterable<List<T>> {
      * @param includeDiagonal a flag indicating if diagonal neighboring points should be returned. This is `false` by default, indicating that only vertical and horizontal neighbors are returned.
      * @param pointFilter an optional function to further inspect the value of a potential neighboring point. This is useful if you have a weighted graph, or otherwise want to only move in a direction under certain criteria.
      */
-    fun getNeighboringPoints(row: Int, col: Int, includeDiagonal: Boolean = false, pointFilter: (currentPoint: Point<T>, neighboringPoint: Point<T>) -> Boolean = { _, _ -> true }): Map<Direction, Point<T>> =
-        Direction.values().filter { includeDiagonal || !it.diagonal }.filter {
+    fun getNeighboringPoints(
+        row: Int,
+        col: Int,
+        includeDiagonal: Boolean = false,
+        pointFilter: (currentPoint: DataPoint<T>, neighboringPoint: DataPoint<T>) -> Boolean = { _, _ -> true },
+    ): Map<Direction, DataPoint<T>> =
+        Direction.entries.filter { includeDiagonal || !it.diagonal }.filter {
             (row + it.yOffset < height) && (row + it.yOffset >= 0) &&
                 (col + it.xOffset < width) && (col + it.xOffset >= 0)
         }.associateWith {
@@ -53,8 +66,12 @@ open class Matrix<T>(initialContents: List<List<T>>) : Iterable<List<T>> {
      * @param pointFilter an optional function to further inspect the value of a potential neighboring point. This is useful if you have a weighted graph, or otherwise want to only move in a direction under certain criteria.
      * @return a Map of Point to Int values, indicating the distance from the end for each starting point
      */
-    fun findAllPaths(end: Point<T>, allowDiagonal: Boolean = false, pointFilter: (currentPoint: Point<T>, neighboringPoint: Point<T>) -> Boolean = { _, _ -> true }): Map<Point<T>, List<Point<T>>> {
-        val queue = LinkedList(listOf(end to Path(end))) as Queue<Pair<Point<T>, Path<T>>>
+    fun findAllPaths(
+        end: DataPoint<T>,
+        allowDiagonal: Boolean = false,
+        pointFilter: (currentPoint: DataPoint<T>, neighboringPoint: DataPoint<T>) -> Boolean = { _, _ -> true },
+    ): Map<DataPoint<T>, List<DataPoint<T>>> {
+        val queue = LinkedList(listOf(end to Path(end))) as Queue<Pair<DataPoint<T>, Path<T>>>
 
         val pointDistances = mutableMapOf(end to Path(end))
 
@@ -64,12 +81,13 @@ open class Matrix<T>(initialContents: List<List<T>>) : Iterable<List<T>> {
                 getNeighboringPoints(point.y, point.x, allowDiagonal) { current, neighbor ->
                     pointFilter(current, neighbor) && !pointDistances.containsKey(neighbor)
                 }.map {
-                    val newPath = path.clone().apply {
-                        add(it.value.copy())
-                    }
+                    val newPath =
+                        path.clone().apply {
+                            add(it.value.copy())
+                        }
                     pointDistances[it.value] = newPath
                     it.value to newPath
-                }
+                },
             )
         }
 
@@ -84,8 +102,19 @@ open class Matrix<T>(initialContents: List<List<T>>) : Iterable<List<T>> {
      * @param pointFilter an optional function to further inspect the value of a potential neighboring point. This is useful if you have a weighted graph, or otherwise want to only move in a direction under certain criteria.
      * @return a List of Points, from start to end, indicating the steps to take. This will be an empty list of no path can be found from start to end.
      */
-    fun findShortestPath(start: Point<T>, end: Point<T>, allowDiagonal: Boolean = false, pointFilter: (currentPoint: Point<T>, neighboringPoint: Point<T>) -> Boolean = { _, _ -> true }) =
-        findAllPaths(end, allowDiagonal, pointFilter).filter { it.key == start }.ifEmpty { emptyMap() }.values.first()
+    fun findShortestPath(
+        start: DataPoint<T>,
+        end: DataPoint<T>,
+        allowDiagonal: Boolean = false,
+        pointFilter: (currentPoint: DataPoint<T>, neighboringPoint: DataPoint<T>) -> Boolean = { _, _ -> true },
+    ) = findAllPaths(end, allowDiagonal, pointFilter).filter { it.key == start }.ifEmpty { emptyMap() }.values.first()
+
+    fun findLongestPath(
+        start: DataPoint<T>,
+        end: DataPoint<T>,
+        allowDiagonal: Boolean = false,
+        pointFilter: (currentPoint: DataPoint<T>, neighboringPoint: DataPoint<T>) -> Boolean = { _, _ -> true },
+    ) = findAllPaths(end, allowDiagonal, pointFilter).filter { it.key == start }.ifEmpty { emptyMap() }.values.last()
 
     /**
      * Turn this matrix on it's side, and return the new representation. By transposing, the first row becomes the first column,
@@ -109,9 +138,10 @@ open class Matrix<T>(initialContents: List<List<T>>) : Iterable<List<T>> {
         val rows = grid.size
         val cols = grid[0].size
 
-        val transposed = Array<Array<Any>>(cols) {
-            Array(rows) { }
-        }
+        val transposed =
+            Array<Array<Any>>(cols) {
+                Array(rows) { }
+            }
 
         for (i in 0 until rows) {
             for (j in 0 until cols) {
@@ -119,14 +149,21 @@ open class Matrix<T>(initialContents: List<List<T>>) : Iterable<List<T>> {
             }
         }
 
-        grid = transposed.map {
-            @Suppress("UNCHECKED_CAST")
-            it.toMutableList() as MutableList<T>
-        }.toMutableList()
+        grid =
+            transposed.map {
+                @Suppress("UNCHECKED_CAST")
+                it.toMutableList() as MutableList<T>
+            }.toMutableList()
         return this
     }
 
-    fun expand(left: Int = 0, right: Int = 0, up: Int = 0, down: Int = 0, fill: T): Matrix<T> {
+    fun expand(
+        left: Int = 0,
+        right: Int = 0,
+        up: Int = 0,
+        down: Int = 0,
+        fill: T,
+    ): Matrix<T> {
         var newMatrix = Matrix(grid)
         if (down > 0) {
             newMatrix = Matrix(newMatrix.grid + List(down) { List(newMatrix.width) { fill } })
@@ -167,18 +204,52 @@ open class Matrix<T>(initialContents: List<List<T>>) : Iterable<List<T>> {
             it[colNum]
         }
 
-    fun pointAt(row: Int, col: Int): Point<T> = Point(col, row, grid[row][col])
+    fun pointAt(
+        row: Int,
+        col: Int,
+    ): DataPoint<T> = DataPoint(col, row, grid[row][col])
 
-    fun setPoint(row: Int, col: Int, value: T) = if (isValidPoint(row, col)) {
+    fun find(pointFilter: (currentPoint: T) -> Boolean): List<DataPoint<T>> {
+        return grid.mapIndexed { y, row ->
+            row.mapIndexedNotNull { x, t ->
+                if (pointFilter(t)) {
+                    DataPoint(x, y, t)
+                } else {
+                    null
+                }
+            }
+        }.flatten()
+    }
+
+    fun points(): Set<DataPoint<T>> {
+        return grid.mapIndexed { y, row ->
+            row.mapIndexed { x, t -> DataPoint(x, y, t) }
+        }.flatten().toSet()
+    }
+
+    fun setPoint(
+        row: Int,
+        col: Int,
+        value: T,
+    ) = if (isValidPoint(row, col)) {
         grid[row][col] = value
         true
     } else {
         false
     }
 
-    fun isValidPoint(row: Int, col: Int) = (row in 0 until height) && (col in 0..width)
+    fun isValidPoint(
+        row: Int,
+        col: Int,
+    ) = (row in 0 until height) && (col in 0..width)
 
-    fun pointsWithinDistance(row: Int, col: Int, distance: Int, includeOffGrid: Boolean = false, fill: T? = null): List<Point<T>> {
+    fun pointsWithinDistance(
+        row: Int,
+        col: Int,
+        distance: Int,
+        includeOffGrid: Boolean = false,
+        fill: T? = null,
+    ): List<DataPoint<T>> {
         if (includeOffGrid) {
             requireNotNull(fill) {
                 "Fill is required if including off-grid points"
@@ -189,13 +260,14 @@ open class Matrix<T>(initialContents: List<List<T>>) : Iterable<List<T>> {
 
         return (col - distance - 1 toward col + distance).map { y ->
             (row - distance - 1 toward row + distance).mapNotNull { x ->
-                val next = if (isValidPoint(y, x)) {
-                    pointAt(y, x)
-                } else if (includeOffGrid) {
-                    Point<T>(x, y, fill!!)
-                } else {
-                    null
-                }
+                val next =
+                    if (isValidPoint(y, x)) {
+                        pointAt(y, x)
+                    } else if (includeOffGrid) {
+                        DataPoint<T>(x, y, fill!!)
+                    } else {
+                        null
+                    }
 
                 if (next != null && start.distanceFrom(next) <= distance && next != start) {
                     next
@@ -221,17 +293,18 @@ open class Matrix<T>(initialContents: List<List<T>>) : Iterable<List<T>> {
     }
 }
 
-internal data class Path<T>(val start: Point<T>) : Cloneable {
+internal data class Path<T>(val start: DataPoint<T>) : Cloneable {
     private val _points = linkedSetOf(start)
 
-    val points: List<Point<T>>
+    val points: List<DataPoint<T>>
         get() = _points.toList()
 
-    fun add(point: Point<T>) = _points.add(point)
+    fun add(point: DataPoint<T>) = _points.add(point)
 
-    public override fun clone() = Path(this.start).apply {
-        this@Path.points.map { it.copy() }.forEach {
-            add(it)
+    public override fun clone() =
+        Path(this.start).apply {
+            this@Path.points.map { it.copy() }.forEach {
+                add(it)
+            }
         }
-    }
 }
