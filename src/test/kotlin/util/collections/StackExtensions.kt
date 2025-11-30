@@ -1,3 +1,5 @@
+@file:Suppress("unused")
+
 package util.collections
 
 import java.util.Stack
